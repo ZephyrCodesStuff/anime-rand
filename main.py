@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(
                     description='Fetches a random recent anime wallpaper from anime-pictures.net',
                     epilog='Enjoy your new wallpaper!')
 parser.add_argument('-p', '--path', help='Path to save the wallpaper to', default=None)
-parser.add_argument('-s', '--set', help='Set the wallpaper as the desktop background', default=True)
+parser.add_argument('-s', '--set', help='Set the wallpaper as the desktop background', default=True, action=argparse.BooleanOptionalAction)
 parser.add_argument('-r', '--remove', help='Remove the image after saving. Only works if --set is true.', default=True)
 parser.add_argument('-pg', '--pages', help='Page count to fetch wallpapers from. The higher, the more random the wallpaper will be.', type=int, default=0)
 parser.add_argument('-ar', '--aspect-ratio', help='Aspect ratio of the wallpaper. Default is 16:9', default='16:9')
