@@ -21,14 +21,31 @@ args = parser.parse_args()
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='INFO', logger=logger)
 
-BASE_URL = "https://anime-pictures.net/api/v3/posts"
-CDN_URL = "https://images.anime-pictures.net"
+BASE_URL = "https://api.anime-pictures.net/api/v3/posts"
+CDN_URL = "https://oimages.anime-pictures.net"
+
 PARAMS = {
     "page": random.randint(0, args.pages),
     "aspect": args.aspect_ratio,
     "order_by": "date",
     "ldate": 0,
     "lang": 'en',
+}
+
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+    'Referer': 'https://anime-pictures.net',
+    'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Connection': 'keep-alive',
+    'DNT': '1',
+    'Alt-Used': 'oimages.anime-pictures.net',
+    'Cookie': 'asian_server=fb0d795fe1bf429a9ca250fc7f804e5c; sitelang=en; priors=824340|825172|825190|825393|825498; kira=4',
+
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'cross-site',
 }
 
 if args.query:
@@ -39,10 +56,10 @@ def main():
     if args.query:
         logger.info('Searching for tags: ' + ', '.join(PARAMS['search_tag'].split('||')))
 
-    req = requests.get(BASE_URL, params=PARAMS)
+    req = requests.get(BASE_URL, params=PARAMS, headers=HEADERS)
     data = req.json()
-    posts = [post['md5'] + post['ext'] for post in data['posts']]
-    urls = [f'{CDN_URL}/{post[0:3]}/{post}' for post in posts]
+
+    urls = [f"{post['md5'][:3]}/{post['md5'] + post['ext']}" for post in data['posts']]
 
     if len(urls) == 0:
         logger.error('No wallpapers found. Try increasing the page count or changing the query.')
@@ -52,13 +69,21 @@ def main():
     filename = url.split('/')[-1]
 
     if not args.path:
-        args.path = os.path.join(os.path.expanduser('~'), 'Pictures', 'Wallpapers')
+        args.path = os.path.join(os.path.expanduser('~'), '.cache', 'anime-rand', 'wallpapers')
         os.makedirs(args.path, exist_ok=True)
 
     with open(os.path.join(args.path, filename), 'wb') as f:
         logger.info(f'Saving image to {args.path}/{filename}')
-        f.write(requests.get(url).content)
-
+        
+        image_url = f"{CDN_URL}/{url}"
+        response = requests.get(image_url, headers=HEADERS)
+        if response.status_code != 200:
+            logger.error('Failed to fetch image. Try again later.')
+            logger.debug(f'Response: {response.status_code}')
+            return
+        
+        f.write(response.content)
+        
     if args.set:
         process = subprocess.run(['python', '-m', 'pywal', '-i', f'{args.path}/{filename}'])
         try:
@@ -67,7 +92,7 @@ def main():
         except:
             logger.error('Failed to set image as wallpaper. Is Pywal installed?')
 
-    if args.set and args.remove:
+    if args.set and not args.remove:
         os.remove(os.path.join(args.path, filename))
         logger.info('Removed the image file.')
 
